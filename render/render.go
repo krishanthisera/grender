@@ -25,6 +25,7 @@ func (config RenderingConfigs) Render(url string) (*string, error) {
 	return &html, nil
 }
 
+// This is the function that does the actual rendering
 func pageRender(url string, waitCondition string, pageWaitTime time.Duration, html *string) chromedp.Tasks {
 	return chromedp.Tasks{
 		chromedp.Navigate(url),

@@ -1,7 +1,6 @@
 package backend
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 )
@@ -15,7 +14,6 @@ func (f FileSystem) Put(u string, data []byte) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(p)
 
 	// Getting directory path
 	dir := filepath.Dir(filepath.Join(f.BaseDir, p))
@@ -39,5 +37,14 @@ func (f FileSystem) Put(u string, data []byte) error {
 
 func (f FileSystem) Get(url string) ([]byte, error) {
 	// FileSystem get logic
-	return nil, nil
+	p, err := generateRelativePath(url)
+	if err != nil {
+		return nil, err
+	}
+
+	b, err := os.ReadFile(filepath.Join(f.BaseDir, p) + ".html")
+	if err != nil {
+		return nil, err
+	}
+	return b, nil
 }

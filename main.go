@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/krishanthisera/grender/backend"
+	"github.com/krishanthisera/grender/pilot"
 	"github.com/krishanthisera/grender/render"
 )
 
@@ -11,9 +12,9 @@ func main() {
 	url := "https://www.yd.com.au/au/white-striker-sneaker-y233fc11"
 
 	pageWaitCondition := `(function() {
-		return window.prerenderReady === true;
-})()
-`
+			return window.prerenderReady === true;
+		})()
+	`
 
 	result, err := render.RenderingConfigs{PageWailCondition: pageWaitCondition, PageWaitTime: 16}.Render(url)
 
@@ -31,4 +32,6 @@ func main() {
 	if err := backend.Backend.Put(fs, url, []byte(*result)); err != nil {
 		panic(err)
 	}
+
+	pilot.Grender()
 }
