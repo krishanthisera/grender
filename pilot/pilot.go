@@ -13,12 +13,22 @@ func Grender() {
 		url := c.Param("url")
 		fmt.Println(url)
 		renderedHTML, err := GetPages(url)
-		if err != nil {
+
+		// Page is rendered successfully
+		if renderedHTML != nil {
+			c.Data(http.StatusOK, "text/html", []byte(renderedHTML))
+			// Page cannot be cached
+			if err != nil {
+				c.String(http.StatusInternalServerError, "Error caching URL: %v", err)
+				return
+			}
+			return
+		} else {
+			// Page cannot be rendered
 			c.String(http.StatusInternalServerError, "Error rendering URL: %v", err)
 			return
 		}
 
-		c.Data(http.StatusOK, "text/html", []byte(renderedHTML))
 	})
 
 	router.Run(":8080")

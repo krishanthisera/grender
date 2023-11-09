@@ -4,13 +4,26 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/url"
 	"time"
 
 	"github.com/chromedp/cdproto/dom"
 	"github.com/chromedp/chromedp"
 )
 
-func (config RenderingConfigs) Render(url string) (*string, error) {
+func (config RenderingConfigs) Render(webAddr string) (*string, error) {
+	// Validate the URL
+	webAddr = func(val string) string {
+		u, err := url.Parse(val)
+		if err != nil {
+			panic(err)
+		}
+		if u.Scheme == "" {
+			u.Scheme = "https"
+		}
+		return u.String()
+	}(webAddr)
+
 	// Create a new Chrome headless instance
 	ctx, cancel := chromedp.NewContext(
 		context.Background(),
@@ -19,16 +32,16 @@ func (config RenderingConfigs) Render(url string) (*string, error) {
 	defer cancel()
 
 	var html string
-	if err := chromedp.Run(ctx, pageRender(url, config.PageWailCondition, time.Duration(config.PageWaitTime*float32(time.Second)), &html)); err != nil {
+	if err := chromedp.Run(ctx, pageRender(webAddr, config.PageWailCondition, time.Duration(config.PageWaitTime*float32(time.Second)), &html)); err != nil {
 		return nil, err
 	}
 	return &html, nil
 }
 
 // This is the function that does the actual rendering
-func pageRender(url string, waitCondition string, pageWaitTime time.Duration, html *string) chromedp.Tasks {
+func pageRender(webAddr string, waitCondition string, pageWaitTime time.Duration, html *string) chromedp.Tasks {
 	return chromedp.Tasks{
-		chromedp.Navigate(url),
+		chromedp.Navigate(webAddr),
 		chromedp.ActionFunc(func(ctx context.Context) error {
 			// Wait Condition
 
