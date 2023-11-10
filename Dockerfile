@@ -24,7 +24,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o /go/bin/grender main.go
 # -----------------------------
 # Stage 2: Create the final image
 # -----------------------------
-FROM scratch
+FROM chromedp/headless-shell:latest
 
 # Copy the compiled binary from the builder stage to the final container
 COPY --from=builder /go/bin/grender /go/bin/grender
