@@ -1,6 +1,6 @@
 package render
 
-type RenderingConfigs struct {
-	PageWaitTime      float32 // Seconds
-	PageWailCondition string
+type Config struct {
+	PageWaitTime      float32 `yaml:"pageWaitTime"` // Seconds
+	PageWailCondition string  `yaml:"pageWaitCondition"`
 }

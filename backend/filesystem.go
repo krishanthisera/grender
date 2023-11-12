@@ -5,10 +5,6 @@ import (
 	"path/filepath"
 )
 
-type FileSystem struct {
-	BaseDir string
-}
-
 func (f FileSystem) Put(u string, data []byte) error {
 	p, err := generateRelativePath(u)
 	if err != nil {

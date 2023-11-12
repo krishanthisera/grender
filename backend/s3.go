@@ -1,17 +1,42 @@
 package backend
 
-import "fmt"
+import (
+	"bytes"
+	"context"
+	"fmt"
+	"io"
 
-type S3 struct {
-	BucketName string
-}
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+)
 
-func (s S3) Put(url string, data []byte) error {
-	fmt.Println(string(data))
+func (b S3) Put(url string, data []byte) error {
+	_, err := b.S3Client.PutObject(context.TODO(), &s3.PutObjectInput{
+		Bucket: &b.BucketName,
+		Key:    &url,
+		Body:   bytes.NewReader(data),
+	})
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
 	return nil
 }
 
-func (s S3) Get(url string) ([]byte, error) {
-	fmt.Printf("Getting %s to S3", s.BucketName)
-	return nil, nil
+func (b S3) Get(url string) ([]byte, error) {
+	res, err := b.S3Client.GetObject(context.TODO(), &s3.GetObjectInput{
+		Bucket: &b.BucketName,
+		Key:    &url,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer res.Body.Close()
+
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+	return body, nil
 }

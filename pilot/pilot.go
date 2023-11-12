@@ -7,12 +7,19 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func Grender() {
+func (C *Config) Grender() {
+
 	router := gin.Default()
 	router.GET("/render/*url", func(c *gin.Context) {
 		url := c.Param("url")
 		fmt.Println(url)
-		renderedHTML, err := GetPages(url)
+
+		be, err := createBackendFromConfig(C.Backend.S3)
+		if err != nil {
+			fmt.Println(err)
+		}
+		rac := renderAndCacheConfig{backend: &be, render: &C.RenderingConfig}
+		renderedHTML, err := rac.RenderAndCache(url)
 
 		// Page is rendered successfully
 		if renderedHTML != nil {
@@ -31,5 +38,5 @@ func Grender() {
 
 	})
 
-	router.Run(":8080")
+	router.Run(fmt.Sprintf(":%s", C.Server.Port))
 }

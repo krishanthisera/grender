@@ -1,0 +1,432 @@
+package pilot
+
+import (
+	"github.com/krishanthisera/grender/backend"
+)
+
+func (c *renderAndCacheConfig) RenderAndCache(url string) ([]byte, error) {
+
+	res, err := backend.Backend.Get(*c.backend, url)
+
+	// If errored te app must render the page on the fly
+	if err != nil {
+		page, err := c.render.Render(url)
+		if err != nil {
+			return nil, err
+		}
+		// If the page is rendered successfully, save it to the backend
+		if err := backend.Backend.Put(*c.backend, url, []byte(*page)); err != nil {
+			return []byte(*page), err
+		}
+		return []byte(*page), nil
+	}
+
+	return res, nil
+}
+package pilot
+
+import (
+	"github.com/krishanthisera/grender/backend"
+	"github.com/krishanthisera/grender/render"
+)
+
+// Config struct to represent the overall YAML configuration
+type Config struct {
+	Version         string        `yaml:"version"`
+	RenderingConfig render.Config `yaml:"renderingConfig"`
+	Server          struct {
+		Port string `yaml:"port"`
+	} `yaml:"server"`
+	Backend struct {
+		S3         backend.S3         `yaml:"s3"`
+		FileSystem backend.FileSystem `yaml:"fileSystem"`
+	} `yaml:"backend"`
+}
+
+type renderAndCacheConfig struct {
+	backend *backend.Backend
+	render  *render.Config
+}
+package pilot
+
+import (
+	"context"
+	"fmt"
+	"os"
+
+	aws "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/krishanthisera/grender/backend"
+	"gopkg.in/yaml.v2"
+)
+
+func createBackendFromConfig(backendConfig interface{}) (backend.Backend, error) {
+	switch b := backendConfig.(type) {
+	case backend.S3:
+		cfg, err := aws.LoadDefaultConfig(context.TODO(), aws.WithRegion(fmt.Sprintf(b.Region)))
+		bucket := backend.S3{BucketName: "grender.io", S3Client: s3.NewFromConfig(cfg)}
+		return &bucket, err
+	case backend.FileSystem:
+		fs := backend.FileSystem{BaseDir: b.BaseDir}
+		return &fs, nil
+	default:
+
+		panic(fmt.Sprintf("Unknown backend: %T", b))
+	}
+}
+
+// TO DO: Refactor this to use the backend package
+// func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
+// 	var buf map[string]interface{}
+// 	err := unmarshal(&buf)
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	c.Version = buf["version"].(string)
+
+// 	renderingConfig, ok := buf["renderingConfig"].(map[interface{}]interface{})
+// 	if !ok {
+// 		return errors.New("renderingConfig field not found or is not a map")
+// 	}
+
+// 	renderingConfigData, err := yaml.Marshal(renderingConfig)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	err = yaml.Unmarshal(renderingConfigData, &c.RenderingConfig)
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	server, ok := buf["server"].(map[interface{}]interface{})
+// 	if !ok {
+// 		return errors.New("server field not found or is not a map")
+// 	}
+
+// 	c.Server.Port, ok = server["port"].(string)
+// 	if !ok {
+// 		return errors.New("port field not found or is not a string")
+// 	}
+
+// 	backend, ok := buf["backend"].(map[interface{}]interface{})
+// 	if !ok {
+// 		return errors.New("backend field not found or is not a map")
+// 	}
+
+// 	if s3, ok := backend["s3"].(map[interface{}]interface{}); ok {
+// 		s3Data, err := yaml.Marshal(s3)
+// 		if err != nil {
+// 			return err
+// 		}
+// 		err = yaml.Unmarshal(s3Data, &c.Backend.S3)
+// 		if err != nil {
+// 			return err
+// 		}
+
+// 	} else if fs, ok := backend["fileSystem"].(map[interface{}]interface{}); ok {
+// 		fsData, err := yaml.Marshal(fs)
+// 		if err != nil {
+// 			return err
+// 		}
+// 		err = yaml.Unmarshal(fsData, &c.Backend.FileSystem)
+// 		if err != nil {
+// 			return err
+// 		}
+// 	} else {
+// 		return errors.New("unknown backend type")
+// 	}
+
+// 	return nil
+// }
+
+func GenerateConfig(path string) (*Config, error) {
+	yamlData, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	var config Config
+	err = yaml.Unmarshal(yamlData, &config)
+	if err != nil {
+		return nil, fmt.Errorf("error unmarshalling YAML: %v", err)
+	}
+	return &config, nil
+}
+package pilot
+
+import (
+	"fmt"
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+)
+
+func (C *Config) Grender() {
+
+	router := gin.Default()
+	router.GET("/render/*url", func(c *gin.Context) {
+		url := c.Param("url")
+		fmt.Println(url)
+
+		be, err := createBackendFromConfig(C.Backend.S3)
+		if err != nil {
+			fmt.Println(err)
+		}
+		rac := renderAndCacheConfig{backend: &be, render: &C.RenderingConfig}
+		renderedHTML, err := rac.RenderAndCache(url)
+
+		// Page is rendered successfully
+		if renderedHTML != nil {
+			c.Data(http.StatusOK, "text/html", []byte(renderedHTML))
+			// Page cannot be cached
+			if err != nil {
+				c.String(http.StatusInternalServerError, "Error caching URL: %v", err)
+				return
+			}
+			return
+		} else {
+			// Page cannot be rendered
+			c.String(http.StatusInternalServerError, "Error rendering URL: %v", err)
+			return
+		}
+
+	})
+
+	router.Run(fmt.Sprintf(":%s", C.Server.Port))
+}
+package main
+
+import (
+	"fmt"
+
+	"github.com/krishanthisera/grender/pilot"
+)
+
+func main() {
+	fmt.Println("Grender is starting...")
+	grenderConfig, err := pilot.GenerateConfig("grender.yaml")
+	fmt.Print(grenderConfig)
+	if err != nil {
+		panic(err)
+	}
+	grenderConfig.Grender()
+}
+package backend
+
+import "github.com/aws/aws-sdk-go-v2/service/s3"
+
+type Backend interface {
+	Put(url string, data []byte) error
+	Get(url string) ([]byte, error)
+}
+
+type S3 struct {
+	BucketName string     `yaml:"bucketName"`
+	Region     string     `yaml:"region"`
+	S3Client   *s3.Client `yaml:"-"`
+}
+
+type FileSystem struct {
+	BaseDir string `yaml:"baseDir"`
+}
+package backend
+
+import (
+	"net/url"
+	"path"
+	"path/filepath"
+	"strings"
+)
+
+func generateRelativePath(u string) (string, error) {
+	url, err := url.Parse(u)
+	if err != nil {
+		return "", err
+	}
+	path := path.Join(url.Host, url.Path)
+
+	return strings.TrimSuffix(path, filepath.Ext(path)), nil
+}
+package backend
+
+type Redis struct {
+	Chanel string
+}
+
+func (r Redis) Put() error {
+	// Redis put logic
+	return nil
+}
+
+func (r Redis) Get() ([]byte, error) {
+	// Redis get logic
+	return nil, nil
+}
+package backend
+
+import (
+	"bytes"
+	"context"
+	"fmt"
+	"io"
+
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+)
+
+func (b S3) Put(url string, data []byte) error {
+	_, err := b.S3Client.PutObject(context.TODO(), &s3.PutObjectInput{
+		Bucket: &b.BucketName,
+		Key:    &url,
+		Body:   bytes.NewReader(data),
+	})
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	return nil
+}
+
+func (b S3) Get(url string) ([]byte, error) {
+	res, err := b.S3Client.GetObject(context.TODO(), &s3.GetObjectInput{
+		Bucket: &b.BucketName,
+		Key:    &url,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer res.Body.Close()
+
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+	return body, nil
+}
+package backend
+
+import (
+	"os"
+	"path/filepath"
+)
+
+func (f FileSystem) Put(u string, data []byte) error {
+	p, err := generateRelativePath(u)
+	if err != nil {
+		return err
+	}
+
+	// Getting directory path
+	dir := filepath.Dir(filepath.Join(f.BaseDir, p))
+	os.MkdirAll(dir, os.ModePerm)
+
+	// Writing file to the system
+	file, err := os.Create(filepath.Join(f.BaseDir, p) + ".html")
+	if err != nil {
+		return err
+	}
+
+	_, err = file.Write(data)
+	if err != nil {
+		return err
+	}
+
+	defer file.Close()
+	return nil
+
+}
+
+func (f FileSystem) Get(url string) ([]byte, error) {
+	// FileSystem get logic
+	p, err := generateRelativePath(url)
+	if err != nil {
+		return nil, err
+	}
+
+	b, err := os.ReadFile(filepath.Join(f.BaseDir, p) + ".html")
+	if err != nil {
+		return nil, err
+	}
+	return b, nil
+}
+package render
+
+type Config struct {
+	PageWaitTime      float32 `yaml:"pageWaitTime"` // Seconds
+	PageWailCondition string  `yaml:"pageWaitCondition"`
+}
+package render
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"net/url"
+	"time"
+
+	"github.com/chromedp/cdproto/dom"
+	"github.com/chromedp/chromedp"
+)
+
+func (config Config) Render(webAddr string) (*string, error) {
+	// Validate the URL
+	webAddr = func(val string) string {
+		u, err := url.Parse(val)
+		if err != nil {
+			panic(err)
+		}
+		if u.Scheme == "" {
+			u.Scheme = "https"
+		}
+		return u.String()
+	}(webAddr)
+
+	// Create a new Chrome headless instance
+	ctx, cancel := chromedp.NewContext(
+		context.Background(),
+		chromedp.WithLogf(log.Printf),
+	)
+	defer cancel()
+
+	var html string
+	if err := chromedp.Run(ctx, pageRender(webAddr, config.PageWailCondition, time.Duration(config.PageWaitTime*float32(time.Second)), &html)); err != nil {
+		return nil, err
+	}
+	return &html, nil
+}
+
+// This is the function that does the actual rendering
+func pageRender(webAddr string, waitCondition string, pageWaitTime time.Duration, html *string) chromedp.Tasks {
+	return chromedp.Tasks{
+		chromedp.Navigate(webAddr),
+		chromedp.ActionFunc(func(ctx context.Context) error {
+			// Wait Condition
+
+			var result bool
+			startTime := time.Now()
+			for time.Since(startTime) < pageWaitTime {
+				if err := chromedp.Evaluate(waitCondition, &result).Do(ctx); err != nil {
+					return err
+				}
+				if result {
+					break // The condition is met, exit the loop.
+				}
+
+				// Sleep for a short duration before re-evaluating the condition.
+				time.Sleep(500 * time.Millisecond)
+			}
+
+			if !result {
+				return fmt.Errorf("timeout [%v] waiting for window.prerenderReady to become true", pageWaitTime)
+			}
+
+			node, err := dom.GetDocument().Do(ctx)
+			if err != nil {
+				return err
+			}
+			*html, err = dom.GetOuterHTML().WithNodeID(node.NodeID).Do(ctx)
+			return err
+		}),
+	}
+}

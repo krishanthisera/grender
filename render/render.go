@@ -11,7 +11,7 @@ import (
 	"github.com/chromedp/chromedp"
 )
 
-func (config RenderingConfigs) Render(webAddr string) (*string, error) {
+func (config Config) Render(webAddr string) (*string, error) {
 	// Validate the URL
 	webAddr = func(val string) string {
 		u, err := url.Parse(val)
@@ -47,7 +47,6 @@ func pageRender(webAddr string, waitCondition string, pageWaitTime time.Duration
 
 			var result bool
 			startTime := time.Now()
-
 			for time.Since(startTime) < pageWaitTime {
 				if err := chromedp.Evaluate(waitCondition, &result).Do(ctx); err != nil {
 					return err
@@ -61,7 +60,7 @@ func pageRender(webAddr string, waitCondition string, pageWaitTime time.Duration
 			}
 
 			if !result {
-				return fmt.Errorf("timeout waiting for window.prerenderReady to become true")
+				return fmt.Errorf("timeout [%v] waiting for window.prerenderReady to become true", pageWaitTime)
 			}
 
 			node, err := dom.GetDocument().Do(ctx)
