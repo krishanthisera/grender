@@ -2,7 +2,7 @@
 
 ❗ **This project is in a very early stage of development.** ❗
 
-This is a Go-based rendering server. It uses different backends for storage and is configured via a YAML file.
+Grender is a web rendering service written in Go that leverages a headless Chrome browser to render and cache web pages. The application supports various backends, including AWS S3 and local file systems, for storing cached content.
 
 ## Configuration
 
@@ -31,11 +31,6 @@ go run main.go
 ```
 
 Make sure to have your config.yaml file in the same directory where you run this command.
-
-```bash
-go get -u github.com/chromedp/chromedp
-go get -u github.com/gin-gonic/gin
-```
 
 ## Project Structure
 
