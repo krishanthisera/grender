@@ -47,4 +47,3 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           file: ${{ matrix.docker_file }}
-          context: ${{ matrix.context }}
