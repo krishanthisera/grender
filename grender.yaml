@@ -1,0 +1,10 @@
+version: v1
+renderingConfig:
+  pageWaitTime: 1000
+  pageWaitCondition: '(function() { return window.prerenderReady === true })()'
+server:
+  port: "8080"
+backend:
+  s3:
+    bucketName: "grender.io"
+    region: "ap-southeast-2"
