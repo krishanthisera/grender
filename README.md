@@ -1,20 +1,50 @@
-# Go Gin Web Page Renderer
+# Grender - Web Page Renderer
 
-❗ __Warning: This project is in a very early stage of development.__
+❗ **This project is in a very early stage of development.** ❗
 
-This repository contains a simple Go web application built with Gin that renders web pages using headless Chrome through the chromedp library. The rendered HTML content is then returned as the response to the client.
+This is a Go-based rendering server. It uses different backends for storage and is configured via a YAML file.
 
-## Prerequisites
+## Configuration
 
-Before running the application, make sure you have the following dependencies installed:
+The server is configured using a `config.yaml` file. Here's an example:
 
-- [Go](https://golang.org/dl/)
-- [chromedp](https://pkg.go.dev/github.com/chromedp/chromedp)
-- [Gin](https://pkg.go.dev/github.com/gin-gonic/gin)
+```yaml
+version: v1
+renderingConfig:
+  pageWaitTime: 1000
+  pageWaitCondition: '(function() { return window.prerenderReady === true })()'
+server:
+  port: "8080"
+backend:
+  s3:
+    bucketName: "grender.io"
+    region: "ap-southeast-2"
 
-You can install the Go dependencies using `go get`:
+```
+
+## Running the Server
+
+To run the server, use the following command:
+
+```bash
+go run main.go
+```
+
+Make sure to have your config.yaml file in the same directory where you run this command.
 
 ```bash
 go get -u github.com/chromedp/chromedp
 go get -u github.com/gin-gonic/gin
 ```
+
+## Project Structure
+
+The main components of the project are organized into packages:
+
+- **pilot:** Contains the main Grender application files, including configuration, rendering logic, and server setup.
+- **backend:** Provides interfaces and implementations for different backends, such as S3 and file systems.
+- **render:** Implements the rendering logic using a headless Chrome browser.
+
+## Dependencies
+
+Grender relies on third-party packages for AWS S3 integration, YAML parsing, and headless Chrome browser automation.
