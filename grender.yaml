@@ -1,10 +1,18 @@
 version: v1
 renderingConfig:
-  pageWaitTime: 1000
+  pageWaitTime: 5
   pageWaitCondition: '(function() { return window.prerenderReady === true })()'
+  requestHeaders:
+    - name: "X-Grender-Request"
+      value: "1"
 server:
   port: "8080"
+  headers:
+    - name: "X-Prerender"
+      value: "1"
 backend:
+  fileSystem:
+    baseDir: "./tmp"
   s3:
     bucketName: "grender.io"
     region: "ap-southeast-2"

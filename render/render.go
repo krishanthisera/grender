@@ -5,16 +5,19 @@ import (
 	"fmt"
 	"log"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/chromedp/cdproto/dom"
+	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/chromedp"
+	"github.com/google/uuid"
 )
 
 func (config Config) Render(webAddr string) (*string, error) {
 	// Validate the URL
 	webAddr = func(val string) string {
-		u, err := url.Parse(val)
+		u, err := url.Parse(strings.TrimLeft(val, "/"))
 		if err != nil {
 			panic(err)
 		}
@@ -32,19 +35,29 @@ func (config Config) Render(webAddr string) (*string, error) {
 	defer cancel()
 
 	var html string
-	if err := chromedp.Run(ctx, pageRender(webAddr, config.PageWailCondition, time.Duration(config.PageWaitTime*float32(time.Second)), &html)); err != nil {
+	// Set request headers
+	headers := func() network.Headers {
+		h := network.Headers{"X-Grender-Request-Id": fmt.Sprintf("%v", uuid.New())}
+		for _, v := range config.RequestHeaders {
+			h[v.Name] = v.Value
+		}
+		fmt.Println(h)
+		return h
+	}()
+
+	if err := chromedp.Run(ctx, pageRender(webAddr, config.PageWailCondition, time.Duration(config.PageWaitTime*float32(time.Second)), &headers, &html)); err != nil {
 		return nil, err
 	}
 	return &html, nil
 }
 
 // This is the function that does the actual rendering
-func pageRender(webAddr string, waitCondition string, pageWaitTime time.Duration, html *string) chromedp.Tasks {
+func pageRender(webAddr string, waitCondition string, pageWaitTime time.Duration, headers *network.Headers, html *string) chromedp.Tasks {
 	return chromedp.Tasks{
+		network.Enable(),
+		network.SetExtraHTTPHeaders(*headers),
 		chromedp.Navigate(webAddr),
 		chromedp.ActionFunc(func(ctx context.Context) error {
-			// Wait Condition
-
 			var result bool
 			startTime := time.Now()
 			for time.Since(startTime) < pageWaitTime {
