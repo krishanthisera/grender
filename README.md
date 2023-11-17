@@ -11,15 +11,22 @@ The server is configured using a `config.yaml` file. Here's an example:
 ```yaml
 version: v1
 renderingConfig:
-  pageWaitTime: 1000
+  pageWaitTime: 10
   pageWaitCondition: '(function() { return window.prerenderReady === true })()'
+  requestHeaders:
+    - name: "X-Grender-Request"
+      value: "1"
 server:
-  port: "8080"
+  port: "8081"
+  responseHeaders:
+    - name: "X-Prerender"
+      value: "1"
 backend:
+  # fileSystem:
+  #   baseDir: "./tmp"
   s3:
     bucketName: "grender.io"
-    region: "ap-southeast-2"
-
+    region: "ap-southeast"
 ```
 
 ## Running the Server
