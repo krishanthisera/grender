@@ -7,6 +7,7 @@ import (
 
 	aws "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/gin-gonic/gin"
 	"github.com/krishanthisera/grender/backend"
 	"gopkg.in/yaml.v2"
 )
@@ -23,6 +24,12 @@ func createBackendFromConfig(backendConfig interface{}) (backend.Backend, error)
 	default:
 
 		panic(fmt.Sprintf("Unknown backend: %T", b))
+	}
+}
+
+func (C *Config) addResponseHeaders(ctx *gin.Context) {
+	for _, h := range C.Server.ResponseHeaders {
+		ctx.Header(h.Name, h.Value)
 	}
 }
 

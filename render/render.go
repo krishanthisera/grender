@@ -11,7 +11,6 @@ import (
 	"github.com/chromedp/cdproto/dom"
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/chromedp"
-	"github.com/google/uuid"
 )
 
 func (config Config) Render(webAddr string) (*string, error) {
@@ -36,32 +35,28 @@ func (config Config) Render(webAddr string) (*string, error) {
 
 	var html string
 	// Set request headers
-	headers := func() network.Headers {
-		h := network.Headers{"X-Grender-Request-Id": fmt.Sprintf("%v", uuid.New())}
-		for _, v := range config.RequestHeaders {
-			h[v.Name] = v.Value
-		}
-		fmt.Println(h)
-		return h
-	}()
+	headers := map[string]interface{}{
+		"Grerender-Request-Id": "my request header",
+	}
 
-	if err := chromedp.Run(ctx, pageRender(webAddr, config.PageWailCondition, time.Duration(config.PageWaitTime*float32(time.Second)), &headers, &html)); err != nil {
+	if err := chromedp.Run(ctx, pageRender(webAddr, config.PageWailCondition, time.Duration(config.PageWaitTime*float32(time.Second)), headers, &html)); err != nil {
 		return nil, err
 	}
 	return &html, nil
 }
 
 // This is the function that does the actual rendering
-func pageRender(webAddr string, waitCondition string, pageWaitTime time.Duration, headers *network.Headers, html *string) chromedp.Tasks {
+func pageRender(webAddr string, pageWaitCondition string, pageWaitTime time.Duration, headers network.Headers, html *string) chromedp.Tasks {
 	return chromedp.Tasks{
 		network.Enable(),
-		network.SetExtraHTTPHeaders(*headers),
+		// Setting the netowrk headers has been disable as: ..."net::ERR_FAILED","canceled":false,"corsErrorStatus":{"corsError":"HeaderDisallowedByPreflightResponse","failedParameter":"grerender-request-id"}}
+		// network.SetExtraHTTPHeaders(network.Headers(headers)),
 		chromedp.Navigate(webAddr),
 		chromedp.ActionFunc(func(ctx context.Context) error {
 			var result bool
 			startTime := time.Now()
 			for time.Since(startTime) < pageWaitTime {
-				if err := chromedp.Evaluate(waitCondition, &result).Do(ctx); err != nil {
+				if err := chromedp.Evaluate(pageWaitCondition, &result).Do(ctx); err != nil {
 					return err
 				}
 				if result {
