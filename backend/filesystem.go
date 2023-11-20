@@ -44,3 +44,17 @@ func (f FileSystem) Get(url string) ([]byte, error) {
 	}
 	return b, nil
 }
+
+func (f FileSystem) Delete(url string) error {
+	// FileSystem delete logic
+	p, err := generateRelativePath(url)
+	if err != nil {
+		return err
+	}
+
+	err = os.Remove(filepath.Join(f.BaseDir, p) + ".html")
+	if err != nil {
+		return err
+	}
+	return nil
+}

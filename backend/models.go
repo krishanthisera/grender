@@ -5,6 +5,7 @@ import "github.com/aws/aws-sdk-go-v2/service/s3"
 type Backend interface {
 	Put(url string, data []byte) error
 	Get(url string) ([]byte, error)
+	Delete(url string) error
 }
 
 type S3 struct {

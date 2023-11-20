@@ -9,7 +9,7 @@ require (
 	github.com/gin-gonic/gin v1.9.1
 )
 
-require github.com/google/uuid v1.4.0
+require github.com/rabbitmq/amqp091-go v1.9.0
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.22.2 // indirect

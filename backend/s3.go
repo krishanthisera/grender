@@ -40,3 +40,14 @@ func (b S3) Get(url string) ([]byte, error) {
 	}
 	return body, nil
 }
+
+func (b S3) Delete(url string) error {
+	_, err := b.S3Client.DeleteObject(context.TODO(), &s3.DeleteObjectInput{
+		Bucket: &b.BucketName,
+		Key:    &url,
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}

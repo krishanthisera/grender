@@ -10,23 +10,33 @@ The server is configured using a `config.yaml` file. Here's an example:
 
 ```yaml
 version: v1
+# There are three modes: "rendering" and "recaching"
+modes: 
+  rendering: true
+  recaching: true
 renderingConfig:
   pageWaitTime: 10
   pageWaitCondition: '(function() { return window.prerenderReady === true })()'
-  requestHeaders:
-    - name: "X-Grender-Request"
-      value: "1"
+  # requestHeaders:
+  #   - name: "X-Grender-Request"
+  #     value: "1"
 server:
-  port: "8081"
+  port: "8080"
   responseHeaders:
     - name: "X-Prerender"
       value: "1"
 backend:
-  # fileSystem:
-  #   baseDir: "./tmp"
-  s3:
-    bucketName: "grender.io"
-    region: "ap-southeast"
+  fileSystem:
+    baseDir: "./tmp"
+  # s3:
+  #   bucketName: "grender.io"
+  #   region: "ap-southeast-2"
+invalidate:
+  amqp:
+    uri: "amqp://user:password@localhost:5672/"
+    timeout: 10
+    queue: "invalidate" 
+
 ```
 
 ## Running the Server

@@ -2,6 +2,7 @@ package pilot
 
 import (
 	"github.com/krishanthisera/grender/backend"
+	"github.com/krishanthisera/grender/invalidate"
 	"github.com/krishanthisera/grender/render"
 )
 
@@ -20,6 +21,13 @@ type Config struct {
 		S3         backend.S3         `yaml:"s3"`
 		FileSystem backend.FileSystem `yaml:"fileSystem"`
 	} `yaml:"backend" required:"true"`
+	Invalidate struct {
+		AMQP invalidate.AMQP `yaml:"amqp"`
+	} `yaml:"invalidate"`
+	Modes struct {
+		Rendering bool `yaml:"rendering"`
+		Recaching bool `yaml:"recaching"`
+	} `yaml:"modes" required:"true"`
 }
 
 type renderAndCacheConfig struct {
